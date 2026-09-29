@@ -32,6 +32,13 @@ fn default_map_is_empty() {
     assert!(map.is_empty());
 }
 
+#[test]
+fn blank_vendor_status_is_rejected() {
+    let mut map = VendorStatusMap::new();
+    assert!(!map.register(" \t\n ", TransactionStatus::PendingExternal));
+    assert!(map.is_empty());
+}
+
 // ── register and resolve – known vendor values ────────────────────────────────
 
 #[test]

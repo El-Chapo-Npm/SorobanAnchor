@@ -257,7 +257,7 @@ impl RetryConfig {
                     base.saturating_sub(offset).max(self.base_delay_ms.min(base))
                 }
             }
-            JitterPolicy::None => base,
+            JitterPolicy::None => base.min(self.max_delay_ms),
         }
     }
 }
@@ -899,6 +899,20 @@ mod retry_tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_no_jitter_caps_base_delay_at_maximum() {
+        let config = RetryConfig::with_strategy(
+            3,
+            5_000,
+            1_000,
+            2,
+            BackoffStrategy::Constant,
+            JitterPolicy::None,
+        );
+        let mut js = MockJitterSource::new(vec![0]);
+        assert_eq!(config.delay_for_attempt(0, &mut js), 1_000);
     }
 
     /// Delays at each attempt level match the expected exponential formula.
