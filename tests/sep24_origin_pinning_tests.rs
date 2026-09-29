@@ -56,6 +56,24 @@ mod sep24_origin_pinning_tests {
         .is_ok());
     }
 
+    #[test]
+    fn encoded_mixed_case_redirect_parameter_is_rejected() {
+        assert!(validate_interactive_url(
+            "https://anchor.example.com/sep24/deposit?%52%45%54%55%52%4E_%55%52%4C=https%3A%2F%2Fevil.example.com",
+            None,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn invalid_allowed_origin_is_rejected() {
+        assert!(validate_interactive_url(
+            "https://anchor.example.com/sep24/deposit",
+            Some("not a valid origin"),
+        )
+        .is_err());
+    }
+
     // ── initiate_interactive_deposit_with_origin ─────────────────────────
 
     #[test]

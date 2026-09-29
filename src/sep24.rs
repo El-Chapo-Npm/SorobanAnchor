@@ -124,9 +124,7 @@ pub fn validate_interactive_url(url: &str, allowed_origin: Option<&str>) -> Resu
 
     if let Some(origin) = allowed_origin {
         let url_origin = extract_normalized_origin(&normalized);
-        let expected_origin = extract_normalized_origin(
-            &normalize_url(origin).unwrap_or_else(|_| alloc::format!("{}", origin)),
-        );
+        let expected_origin = extract_normalized_origin(&normalize_url(origin)?);
         if url_origin != expected_origin {
             return Err(AnchorKitError::with_context(
                 ErrorCode::InvalidEndpointFormat,
@@ -187,18 +185,39 @@ fn has_open_redirect_pattern(url: &str) -> bool {
         Some(pos) => pos + 1,
         None => return false,
     };
-    let query = &url[query_start..];
+    let query = url[query_start..].split('#').next().unwrap_or("");
 
     for pair in query.split('&') {
         let mut parts = pair.splitn(2, '=');
-        let key = parts.next().unwrap_or("");
-        let val = parts.next().unwrap_or("");
+        let key = percent_decode_query_component(parts.next().unwrap_or(""));
+        let val = percent_decode_query_component(parts.next().unwrap_or(""));
 
-        if param_names.contains(&key) && val.contains("://") {
+        if param_names.contains(&key.to_ascii_lowercase().as_str()) && val.contains("://") {
             return true;
         }
     }
     false
+}
+
+fn percent_decode_query_component(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut decoded = String::with_capacity(input.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'+' => { decoded.push(' '); index += 1; }
+            b'%' if index + 2 < bytes.len() => {
+                let high = (bytes[index + 1] as char).to_digit(16);
+                let low = (bytes[index + 2] as char).to_digit(16);
+                if let (Some(high), Some(low)) = (high, low) {
+                    decoded.push((high * 16 + low) as u8 as char);
+                    index += 3;
+                } else { decoded.push('%'); index += 1; }
+            }
+            byte => { decoded.push(byte as char); index += 1; }
+        }
+    }
+    decoded
 }
 
 /// Validates that a transaction ID is well-formed according to SEP-24 requirements.

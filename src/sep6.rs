@@ -139,8 +139,11 @@ impl VendorStatusMap {
     ///
     /// If `vendor_status` is already registered the existing mapping is
     /// replaced.
-    pub fn register(&mut self, vendor_status: &str, canonical: TransactionStatus) {
+    pub fn register(&mut self, vendor_status: &str, canonical: TransactionStatus) -> bool {
         let key = normalize_status_token(vendor_status);
+        if key.is_empty() {
+            return false;
+        }
         if let Some(pos) = self.entries.iter().position(|e| e.vendor_status == key) {
             self.entries[pos].canonical = canonical;
         } else {
@@ -149,6 +152,7 @@ impl VendorStatusMap {
                 canonical,
             });
         }
+        true
     }
 
     /// Resolve a raw anchor status string.
