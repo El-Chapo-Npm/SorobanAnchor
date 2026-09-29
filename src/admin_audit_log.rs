@@ -157,10 +157,12 @@ impl AdminAuditLog {
             .get(&counter_key)
             .unwrap_or(0u64);
 
-        // Check if we've exceeded max entries
+        let entry_key = soroban_sdk::Symbol::new(env, "ADMIN_AUDIT");
+
+        // Evict the oldest entry when the log is at capacity (circular buffer).
         if config.max_entries > 0 && entry_id >= config.max_entries as u64 {
-            // Optionally: delete oldest entry or stop logging
-            // For now, we'll continue logging (circular buffer behavior)
+            let oldest_id = entry_id - config.max_entries as u64;
+            env.storage().instance().remove(&(entry_key.clone(), oldest_id));
         }
 
         // Create the audit event
@@ -185,7 +187,6 @@ impl AdminAuditLog {
             .unwrap_or_else(|_| panic_with_error!(env, ErrorCode::ValidationError));
 
         // Store the event using entry_id as part of the key
-        let entry_key = soroban_sdk::Symbol::new(env, "ADMIN_AUDIT");
         env.storage().instance().set(&(entry_key, entry_id), &event);
         env.storage()
             .instance()
